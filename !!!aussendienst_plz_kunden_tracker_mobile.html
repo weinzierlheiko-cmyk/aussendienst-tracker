@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#12305a">
+<title>Außendienst – PLZ & Kunden-Tracker</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+      onerror="this.onerror=null;this.href='https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css'">
+<style>
+:root{--navy:#12305a;--blue:#1976f3;--green:#16a36a;--orange:#f59e0b;--red:#e83d4f;--ink:#172b4d;--muted:#6c7e98;--line:#dce5f0;--bg:#f3f6fb;--panel:#fff}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:var(--ink);background:var(--bg)}
+body{overflow:hidden}
+button,input,select,textarea{font:inherit}
+button{cursor:pointer;touch-action:manipulation}
+.app{height:100dvh;display:flex;flex-direction:column}
+.topbar{height:auto;min-height:62px;background:var(--navy);color:#fff;display:flex;align-items:center;gap:12px;padding:10px 16px;padding-top:max(10px,env(safe-area-inset-top));z-index:1000;box-shadow:0 2px 12px #102b4c33}
+.brand{font-size:clamp(16px,2.3vw,22px);font-weight:750;line-height:1.15;flex:1}
+.iconbtn{border:0;border-radius:12px;background:#ffffff1a;color:#fff;min-width:44px;min-height:44px;font-size:23px}
+.stats{font-size:12px;line-height:1.4;border:1px solid #ffffff55;background:#ffffff12;border-radius:10px;padding:7px 10px;white-space:nowrap}
+.workspace{flex:1;min-height:0;position:relative}
+#map{position:absolute;inset:0;background:#dce8ef}
+.map-legend{position:absolute;right:12px;top:12px;z-index:500;background:#fffF;border:1px solid #dce5f0;border-radius:14px;padding:12px 14px;box-shadow:0 4px 18px #102b4c22;font-size:13px;line-height:1.8}
+.map-legend strong{display:block;margin-bottom:2px}
+.legend-row{display:flex;align-items:center;gap:8px;white-space:nowrap}
+.swatch{width:13px;height:13px;border-radius:4px;display:inline-block;flex:none}
+.dot{border-radius:50%}
+.mobile-tabs{display:none}
+.panel{position:absolute;z-index:600;top:12px;left:12px;width:min(340px,calc(100% - 24px));max-height:calc(100% - 24px);overflow:auto;background:#fff;border:1px solid var(--line);border-radius:16px;padding:14px;box-shadow:0 5px 24px #102b4c20}
+h2{font-size:16px;margin:0 0 10px}
+h3{font-size:14px;margin:14px 0 8px}
+.field{width:100%;min-height:43px;border:1px solid #cbd8e8;border-radius:10px;padding:10px 12px;background:#fff;color:var(--ink);outline:none}
+.field:focus{border-color:var(--blue);box-shadow:0 0 0 3px #1976f322}
+textarea.field{resize:vertical;min-height:70px}
+.stack{display:grid;gap:8px}
+.btn{border:0;border-radius:10px;min-height:42px;padding:10px 12px;font-weight:650;display:inline-flex;align-items:center;justify-content:center;gap:8px}
+.btn-primary{background:var(--blue);color:white}.btn-soft{background:#eaf1fb;color:var(--navy);border:1px solid #d0deef}.btn-danger{background:var(--red);color:#fff}.btn-small{min-height:34px;padding:7px 10px;font-size:12px}
+.actions{display:flex;gap:8px;flex-wrap:wrap}.actions>*{flex:1}
+.customer-list{display:grid;gap:8px}
+.customer-card{border:1px solid var(--line);border-radius:11px;padding:10px;background:#fff}
+.customer-card .name{font-weight:700;overflow-wrap:anywhere}
+.customer-card .meta{font-size:12px;color:var(--muted);margin-top:3px;overflow-wrap:anywhere}
+.customer-card .card-actions{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}
+.status{display:inline-block;font-size:11px;font-weight:700;border-radius:99px;padding:3px 8px;margin-top:5px}
+.status-open{background:#e5f0ff;color:#1264cc}.status-visited{background:#dff7eb;color:#087749}.status-won{background:#fff0d5;color:#995c00}
+.note{font-size:12px;color:var(--muted);line-height:1.45}
+.hidden{display:none!important}
+.pin-dot{width:22px;height:22px;border:3px solid white;border-radius:50%;box-shadow:0 2px 7px #0005}
+@media(max-width:700px){
+ body{overflow:hidden}
+ .topbar{min-height:58px;gap:9px;padding-left:10px;padding-right:10px}
+ .brand{font-size:15px}
+ .stats{font-size:10px;padding:5px 7px}
+ .workspace{overflow:hidden}
+ .map-legend{top:10px;right:10px;padding:8px 10px;font-size:11px;line-height:1.6}
+ .map-legend .swatch{width:11px;height:11px}
+ .panel{display:none}
+ .panel.mobile-active{display:block;top:auto;left:0;right:0;bottom:0;width:100%;max-height:68%;border-radius:18px 18px 0 0;padding:14px 14px calc(16px + env(safe-area-inset-bottom));border-bottom:0;box-shadow:0 -5px 22px #102b4c25}
+ .mobile-tabs{position:absolute;display:grid;grid-template-columns:repeat(3,1fr);gap:6px;left:8px;right:8px;bottom:8px;z-index:700;padding:6px;background:#fffF;border:1px solid #dce5f0;border-radius:15px;box-shadow:0 4px 18px #102b4c22}
+ .tab{border:0;background:transparent;color:#526783;border-radius:10px;min-height:44px;font-weight:650;font-size:12px}
+ .tab.active{background:#eaf2ff;color:var(--blue)}
+ .panel.mobile-active{bottom:65px;max-height:65%}
+ .field{font-size:16px;min-height:45px}
+ .btn{min-height:44px}
+ .map-legend{max-width:130px}
+ .map-legend .legend-row{gap:6px}
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="topbar">
+    <button class="iconbtn" id="togglePanel" aria-label="Menü öffnen">☰</button>
+    <div class="brand">Außendienst PLZ & Kunden-Tracker</div>
+    <div class="stats"><span id="statsPlz">Besucht: 0 / 0</span><br><span id="statsCustomers">Kunden: 0</span></div>
+  </header>
+  <main class="workspace">
+    <div id="map" aria-label="Postleitzahlenkarte"></div>
+    <aside class="map-legend">
+      <strong>PLZ-Gebiete</strong>
+      <div class="legend-row"><i class="swatch" style="background:#16a36a66;border:1px solid #16a36a"></i>Besucht</div>
+      <div class="legend-row"><i class="swatch" style="background:#1976f344;border:1px solid #1976f3"></i>Offen</div>
+      <strong style="margin-top:6px">Kunden-Pins</strong>
+      <div class="legend-row"><i class="swatch dot" style="background:#1976f3"></i>Offen</div>
+      <div class="legend-row"><i class="swatch dot" style="background:#16a36a"></i>Besucht</div>
+      <div class="legend-row"><i class="swatch dot" style="background:#f59e0b"></i>Gewonnen</div>
+    </aside>
+    <section class="panel mobile-active" id="panel">
+      <div class="desktop-only note" id="desktopHint">PLZ-Gebiet antippen, um den Besuchsstatus zu ändern. Für einen Kunden zuerst „Pin setzen“ aktivieren und dann auf die Karte tippen.</div>
+      <div id="mapControls" class="stack">
+        <input class="field" id="search" placeholder="PLZ oder Ort suchen…" autocomplete="off">
+        <select class="field" id="filter">
+          <option value="all">Alle PLZ-Gebiete anzeigen</option>
+          <option value="open">Nur offene Gebiete</option>
+          <option value="visited">Nur besuchte Gebiete</option>
+        </select>
+      </div>
+      <h3>Kunden-Liste <span id="customerCount">(0)</span></h3>
+      <input class="field" id="customerSearch" placeholder="Kunden suchen…" autocomplete="off">
+      <div class="customer-list" id="customerList" style="margin-top:8px"></div>
+      <h3 id="formTitle">Neuen Kunden anlegen</h3>
+      <form id="customerForm" class="stack">
+        <input class="field" id="custName" placeholder="Firmenname / Kundenname" required maxlength="120">
+        <input class="field" id="custAddress" placeholder="Adresse / Ort (optional)" maxlength="200">
+        <textarea class="field" id="custNotes" placeholder="Notizen (Ansprechpartner, Produkt, etc.)" maxlength="2000"></textarea>
+        <select class="field" id="custStatus">
+          <option value="open">Status: Offen</option><option value="visited">Status: Besucht</option><option value="won">Status: Gewonnen</option>
+        </select>
+        <div class="actions">
+          <button class="btn btn-primary" type="button" id="pinMode">📍 Pin auf Karte setzen</button>
+          <button class="btn btn-soft hidden" type="button" id="cancelEdit">Abbrechen</button>
+        </div>
+        <div class="note" id="formHint">Tippe auf „Pin auf Karte setzen“ und danach auf die gewünschte Position der Karte.</div>
+      </form>
+      <h3>Verwaltung</h3>
+      <div class="actions">
+        <button class="btn btn-soft" id="exportBtn" type="button">⬇ Export</button>
+        <button class="btn btn-soft" id="importBtn" type="button">⬆ Import</button>
+        <button class="btn btn-danger" id="resetBtn" type="button">Alles Reset</button>
+      </div>
+      <input type="file" id="importFile" accept="application/json,.json" class="hidden">
+      <p class="note">Daten werden lokal in diesem Browser gespeichert. Exportiere regelmäßig eine Sicherung, um Daten auf ein anderes Gerät zu übertragen.</p>
+    </section>
+    <nav class="mobile-tabs" aria-label="Ansichten">
+      <button class="tab active" data-view="map">🗺️ Karte</button>
+      <button class="tab" data-view="customers">👤 Kunden</button>
+      <button class="tab" data-view="admin">⚙ Verwaltung</button>
+    </nav>
+  </main>
+</div>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+        onerror="this.onerror=null;var s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js';document.head.appendChild(s)"></script>
+<script>
+window.addEventListener('error', function(e) {
+  if (!window.L) {
+    var map = document.getElementById('map');
+    if (map) map.innerHTML = '<div style="margin:20px;padding:16px;background:white;border:1px solid #dce5f0;border-radius:12px;color:#172b4d;font:15px system-ui">Die Kartenbibliothek konnte nicht geladen werden. Bitte öffne die Datei mit Safari und prüfe die Internetverbindung.</div>';
+  }
+});
+</script>
+<script>
+(() => {
+'use strict';
+const PLZ_URL='https://raw.githubusercontent.com/tdudek/de-plz-geojson/master/plz-2stellig.geojson';
+const PLZ_BACKUP_URL='https://raw.githubusercontent.com/ATinNOH/geojson/main/plz-2stellig.geojson';
+const KEY='aussendienst_tracker_v2';
+const $=id=>document.getElementById(id);
+const helpBox=document.getElementById('openHelp');
+document.getElementById('closeOpenHelp').addEventListener('click',()=>helpBox.style.display='none');
+// HTML cannot force iOS to choose Safari, so the in-app hint is available from the menu button.
+const map=L.map('map',{zoomControl:false}).setView([51.15,10.45],6);
+const tileLayers = [
+  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'}),
+  L.tileLayer('https://{s}.tile.openstreetmap.de/tiles/osmde/{z}/{x}/{y}.png',{subdomains:['a','b','c'],maxZoom:19,attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'})
+];
+let activeTileIndex=0;
+tileLayers[0].addTo(map);
+tileLayers[0].on('tileerror', () => {
+  if(activeTileIndex===0) {
+    activeTileIndex=1;
+    if(map.hasLayer(tileLayers[0])) map.removeLayer(tileLayers[0]);
+    tileLayers[1].addTo(map);
+  }
+});
+const mapError=document.createElement('div');
+mapError.style.cssText='position:absolute;left:12px;right:12px;bottom:74px;z-index:550;background:#fff;border:1px solid #dce5f0;border-radius:10px;padding:10px 12px;font-size:13px;box-shadow:0 2px 10px #0002;display:none';
+mapError.textContent='Kartenkacheln werden nicht geladen. Bitte Internetverbindung prüfen oder die Datei in Safari öffnen.';
+document.querySelector('.workspace').appendChild(mapError);
+tileLayers.forEach(layer=>layer.on('tileerror',()=>{mapError.style.display='block';}));
+tileLayers.forEach(layer=>layer.on('tileload',()=>{mapError.style.display='none';}));
+L.control.zoom({position:'topleft'}).addTo(map);
+let geoLayer=null, pinLayer=L.layerGroup().addTo(map), plzFeatures=[], pinMode=false, editingId=null, pendingCustomer=null;
+let state={visited:[],customers:[]};
+try{const raw=localStorage.getItem(KEY);if(raw){const saved=JSON.parse(raw);state={visited:Array.isArray(saved.visited)?saved.visited:[],customers:Array.isArray(saved.customers)?saved.customers:[]};}}
+catch(e){console.warn('Lokale Daten konnten nicht gelesen werden',e);}
+const legacyVisited=localStorage.getItem('visitedPLZ');if(!state.visited.length&&legacyVisited){try{state.visited=JSON.parse(legacyVisited)||[];}catch(e){}}
+const legacyCustomers=localStorage.getItem('customer_pins');if(!state.customers.length&&legacyCustomers){try{state.customers=JSON.parse(legacyCustomers)||[];}catch(e){}}
+function save(){localStorage.setItem(KEY,JSON.stringify(state));localStorage.setItem('visitedPLZ',JSON.stringify(state.visited));localStorage.setItem('customer_pins',JSON.stringify(state.customers));}
+function esc(s=''){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function statusName(s){return s==='won'?'Gewonnen':s==='visited'?'Besucht':'Offen';}
+function statusColor(s){return s==='won'?'#f59e0b':s==='visited'?'#16a36a':'#1976f3';}
+function refreshStats(){const total=plzFeatures.length; $('statsPlz').textContent=`Besucht: ${state.visited.length} / ${total}${total?' ('+Math.round(state.visited.length/total*100)+'%)':''}`;$('statsCustomers').textContent=`Kunden: ${state.customers.length}`;$('customerCount').textContent=`(${state.customers.length})`;}
+function featureCode(f){const p=f.properties||{};for(const k of ['plz','PLZ','postcode','postal_code','PLZ_CODE','plz_code'])if(p[k]!=null)return String(p[k]).padStart(5,'0');return '';}
+function featureName(f){const p=f.properties||{};return p.name||p.NAME||p.ort||p.ORT||'';}
+function styleFeature(f){const code=featureCode(f), visited=state.visited.includes(code), q=$('search').value.trim().toLowerCase(), filter=$('filter').value;let visible=true;if(q&&!code.toLowerCase().includes(q)&&!featureName(f).toLowerCase().includes(q))visible=false;if(filter==='visited'&&!visited)visible=false;if(filter==='open'&&visited)visible=false;return {color:visited?'#10895a':'#1976f3',weight:1.2,opacity:visible?0.85:0,fillColor:visited?'#16a36a':'#1976f3',fillOpacity:visible?(visited?0.38:0.2):0};}
+function popupContent(f){const code=featureCode(f),visited=state.visited.includes(code);return `<div style="min-width:170px"><b>PLZ ${esc(code||'unbekannt')}</b>${featureName(f)?'<br>'+esc(featureName(f)):''}<br><span>${visited?'✅ Besucht':'🔵 Offen'}</span><br><button class="btn btn-primary btn-small" onclick="window.__togglePlz('${esc(code)}')">${visited?'Als offen markieren':'Als besucht markieren'}</button></div>`;}
+window.__togglePlz=code=>{if(!code)return;if(state.visited.includes(code))state.visited=state.visited.filter(x=>x!==code);else state.visited.push(code);save();geoLayer?.setStyle(styleFeature);refreshStats();};
+function renderPins(){pinLayer.clearLayers();state.customers.forEach(c=>{if(!Number.isFinite(c.lat)||!Number.isFinite(c.lng))return;const marker=L.marker([c.lat,c.lng],{icon:L.divIcon({className:'',html:`<div class="pin-dot" style="background:${statusColor(c.status)}"></div>`,iconSize:[22,22],iconAnchor:[11,11]})});marker.bindPopup(`<b>${esc(c.name)}</b><br>${esc(c.address||'')}<br><span class="status status-${esc(c.status)}">${statusName(c.status)}</span>${c.notes?'<p>'+esc(c.notes).replace(/\n/g,'<br>')+'</p>':''}<div class="actions"><button class="btn btn-soft btn-small" onclick="window.__editCustomer('${esc(c.id)}')">Bearbeiten</button></div>`);marker.addTo(pinLayer);});}
+function renderCustomers(){const q=$('customerSearch').value.trim().toLowerCase();const items=state.customers.filter(c=>[c.name,c.address,c.notes,statusName(c.status)].join(' ').toLowerCase().includes(q));$('customerList').innerHTML=items.length?items.map(c=>`<article class="customer-card"><div class="name">${esc(c.name)}</div><div class="meta">${esc(c.address||'Keine Adresse')}</div><span class="status status-${esc(c.status)}">${statusName(c.status)}</span>${c.notes?`<div class="meta">${esc(c.notes)}</div>`:''}<div class="card-actions"><button class="btn btn-soft btn-small" onclick="window.__locateCustomer('${esc(c.id)}')">Karte</button><button class="btn btn-soft btn-small" onclick="window.__editCustomer('${esc(c.id)}')">Bearbeiten</button><button class="btn btn-soft btn-small" onclick="window.__deleteCustomer('${esc(c.id)}')">Löschen</button></div></article>`).join(''):'<div class="note">Noch keine passenden Kunden hinterlegt.</div>';refreshStats();}
+function redraw(){geoLayer?.setStyle(styleFeature);renderPins();renderCustomers();refreshStats();}
+function resetForm(){editingId=null;pendingCustomer=null;$('customerForm').reset();$('formTitle').textContent='Neuen Kunden anlegen';$('pinMode').textContent='📍 Pin auf Karte setzen';$('cancelEdit').classList.add('hidden');pinMode=false;$('formHint').textContent='Tippe auf „Pin auf Karte setzen“ und danach auf die gewünschte Position der Karte.';}
+function formData(){return {name:$('custName').value.trim(),address:$('custAddress').value.trim(),notes:$('custNotes').value.trim(),status:$('custStatus').value};}
+function startPin(){if(!$('custName').value.trim()){$('custName').focus();$('formHint').textContent='Bitte zuerst einen Kunden- oder Firmennamen eingeben.';return;}pendingCustomer=formData();pinMode=true;$('pinMode').textContent='📍 Jetzt auf die Karte tippen…';$('formHint').textContent='Pin-Modus aktiv. Tippe auf die gewünschte Stelle der Karte. Kunden-Pins selbst öffnen keine neuen Kunden.';if(window.matchMedia('(max-width:700px)').matches){$('panel').classList.remove('mobile-active');document.querySelectorAll('.tab').forEach(b=>b.classList.remove('active'));document.querySelector('[data-view="map"]').classList.add('active');} }
+map.on('click',e=>{if(!pinMode||!pendingCustomer)return;const c={...pendingCustomer,id:editingId||crypto.randomUUID?.()||String(Date.now()),lat:e.latlng.lat,lng:e.latlng.lng};if(editingId){state.customers=state.customers.map(x=>x.id===editingId?c:x);}else state.customers.push(c);save();resetForm();redraw();renderPins();const marker=pinLayer.getLayers().find(m=>{const ll=m.getLatLng();return Math.abs(ll.lat-c.lat)<1e-7&&Math.abs(ll.lng-c.lng)<1e-7;});if(marker)marker.openPopup();});
+window.__editCustomer=id=>{const c=state.customers.find(x=>x.id===id);if(!c)return;editingId=id;$('custName').value=c.name;$('custAddress').value=c.address||'';$('custNotes').value=c.notes||'';$('custStatus').value=c.status||'open';$('formTitle').textContent='Kunden bearbeiten';$('pinMode').textContent='📍 Position ändern';$('cancelEdit').classList.remove('hidden');$('formHint').textContent='Ändere die Daten und tippe auf „Position ändern“, um den Pin neu zu setzen.';if(window.matchMedia('(max-width:700px)').matches)showView('customers');};
+window.__locateCustomer=id=>{const c=state.customers.find(x=>x.id===id);if(c){map.setView([c.lat,c.lng],Math.max(map.getZoom(),13));pinLayer.eachLayer(m=>{const ll=m.getLatLng();if(Math.abs(ll.lat-c.lat)<1e-7&&Math.abs(ll.lng-c.lng)<1e-7)m.openPopup();});}};
+window.__deleteCustomer=id=>{const c=state.customers.find(x=>x.id===id);if(c&&confirm(`Kunde „${c.name}“ löschen?`)){state.customers=state.customers.filter(x=>x.id!==id);save();redraw();}};
+$('customerForm').addEventListener('submit',e=>e.preventDefault());
+$('pinMode').addEventListener('click',startPin);
+$('cancelEdit').addEventListener('click',resetForm);
+$('search').addEventListener('input',()=>geoLayer?.setStyle(styleFeature));
+$('filter').addEventListener('change',()=>geoLayer?.setStyle(styleFeature));
+$('customerSearch').addEventListener('input',renderCustomers);
+$('exportBtn').addEventListener('click',()=>{const blob=new Blob([JSON.stringify({version:2,exportedAt:new Date().toISOString(),...state},null,2)],{type:'application/json'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='aussendienst-tracker-backup.json';a.click();URL.revokeObjectURL(url);});
+$('importBtn').addEventListener('click',()=>$('importFile').click());
+$('importFile').addEventListener('change',async e=>{const file=e.target.files?.[0];if(!file)return;try{const data=JSON.parse(await file.text());if(!Array.isArray(data.visited)||!Array.isArray(data.customers))throw Error('Ungültiges Backup-Format');if(!confirm('Import ersetzt die aktuell gespeicherten Daten. Fortfahren?'))return;state={visited:data.visited,customers:data.customers};save();redraw();alert('Backup erfolgreich importiert.');}catch(err){alert('Import fehlgeschlagen: '+err.message);}finally{e.target.value='';}});
+$('resetBtn').addEventListener('click',()=>{if(confirm('Wirklich alle besuchten PLZ und Kunden löschen? Vorher am besten exportieren.')){state={visited:[],customers:[]};save();redraw();resetForm();}});
+$('togglePanel').addEventListener('click',()=>{const p=$('panel');if(window.matchMedia('(max-width:700px)').matches)p.classList.toggle('mobile-active');else p.classList.toggle('hidden');if(window.matchMedia('(max-width:700px)').matches)helpBox.style.display=helpBox.style.display==='block'?'none':'block';setTimeout(()=>map.invalidateSize(),250);});
+function showView(view){const p=$('panel');p.classList.add('mobile-active');document.querySelectorAll('.tab').forEach(b=>b.classList.toggle('active',b.dataset.view===view));$('mapControls').classList.toggle('hidden',view==='admin');$('customerList').classList.toggle('hidden',view==='admin');$('customerSearch').classList.toggle('hidden',view==='admin');$('formTitle').classList.toggle('hidden',view==='admin');$('customerForm').classList.toggle('hidden',view==='admin');const adminHead=[...p.querySelectorAll('h3')].find(h=>h.textContent.includes('Verwaltung'));if(adminHead)adminHead.classList.toggle('hidden',view==='customers');$('exportBtn').parentElement.classList.toggle('hidden',view==='customers');p.scrollTop=0;setTimeout(()=>map.invalidateSize(),200);}
+document.querySelectorAll('.tab').forEach(b=>b.addEventListener('click',()=>showView(b.dataset.view)));
+function loadGeo(url){return fetch(url).then(r=>{if(!r.ok)throw Error('HTTP '+r.status);return r.json();});}
+loadGeo(PLZ_URL).catch(()=>loadGeo(PLZ_BACKUP_URL)).then(data=>{plzFeatures=data.features||[];geoLayer=L.geoJSON(data,{style:styleFeature,onEachFeature:(f,l)=>{const code=featureCode(f);l.bindPopup(()=>popupContent(f));l.on('click',()=>{if(pinMode)return;});}}).addTo(map);const bounds=geoLayer.getBounds();if(bounds.isValid())map.fitBounds(bounds,{padding:[12,12]});redraw();}).catch(err=>{console.error(err);$('formHint').textContent='Die PLZ-Gebiete konnten nicht geladen werden. Bitte die Datei in Safari öffnen und die Internetverbindung prüfen. Falls du die Datei in der Dateien-Vorschau geöffnet hast, teile sie über „Teilen“ und öffne sie in Safari.';});
+renderCustomers();refreshStats();
+})();
+</script>
+</body>
+</html>
